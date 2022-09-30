@@ -14,23 +14,51 @@
 
    in the future, maybe add an option to save and load config to EEPROM.
 */
-#define CONCAT_(x,y) x##y
-#define CONCAT(x,y) CONCAT_(x,y)
-#define CONFIGURABLE_INT(var_name, value) int var_name = value; struct meta_int CONCAT(meta_int_,__COUNTER__)(&var_name, #var_name); // TODO: add this var to the varLayout string
 
-struct meta_int {
-  int* ptr;
-  char* description;
-  meta_int(int* my_ptr, char* my_description) {
-    ptr = my_ptr;
-    description = my_description;
-  }
+// ---------------------------------------------------------------------------------------------------
+// The real magic section... using the macro CONFIGURABLE_INT to declare a variable (instead of int x), the macro first declares the int as the user intended and also
+// creates an instance of the class MetaInt that saves a pointer to the variable and it's "description" which defaults to it's name. 
+// also store this MetaInt in a global static array MetaInt::mints for future use
+
+#define CONCAT_(x,y) x##y // these two macros are needed to ensure transpilation, used later for creating unique names for instances of the class.
+#define CONCAT(x,y) CONCAT_(x,y)
+// use this to declare every variable that you want to be able to configure (e.g do "CONFIGURABLE_INT(baseSpeed, 1200)" instead of "int baseSpeed = 1200;")
+// 2 steps to this macro, first declare and initialize the variable for the user, then create a class that saves the name and a pointer to that variable.
+#define CONFIGURABLE_INT(var_name, value) int var_name = value; MetaInt CONCAT(MINT_, var_name) = MetaInt(&var_name, #var_name);
+
+class MetaInt {
+  public:
+    static MetaInt* mints[200]; // save all MetaInts created, use this later in the config panel.
+    static int numMints;
+    int* ptr;
+    char* description;
+
+    MetaInt(int* my_ptr, char* my_description) {
+      ptr = my_ptr;
+      description = my_description;
+      mints[numMints] = this; // save this MetaInt in the global static array for future reference.
+
+      // Increase every time MetaInt is created to keep count.
+      MetaInt::numMints++;
+    }
 };
 
+// still needs to initialize static variables
+int MetaInt::numMints = 0;
+MetaInt* MetaInt::mints[200];
+
+// ---------------------------------------------------------------------------------------------------
+
+// --- Configurable variables area - save here all the variables in the code that you wish to be able to config
+// currently supports only int type
+
+CONFIGURABLE_INT(baseSpeed, 1500) // this equals to [ int baseSpeed = 1500; ] but will also allow for remote config via bt 
+CONFIGURABLE_INT(basePower, 2000)
+
+// -----------------------------------------------------
 void configPanelAddIntVar(int* varP, char* varName, int value) {
   Serial.println(varName);
   Serial.println(value);
-  *varP = 100;
 }
 
 
@@ -56,6 +84,8 @@ void sendPanelLayout() {
   BT_SERIAL.print(finalPanel);
 }
 
+
+
 // the following is copied from the "bluetooth electronics" remote panel auto generated code.
 
 //  Auto Generated Code for Arduino IDE
@@ -73,28 +103,27 @@ void sendPanelLayout() {
 int update_interval = 100; // time interval in ms for updating panel indicators
 unsigned long last_time = 0; // time of last update
 char data_in; // data received from BT_SERIAL link
-//#define CONFIGURABLE_INT(var_name, value) int var_name = value; configPanelAddIntVar(&var_name, #var_name, value); // TODO: add this var to the varLayout string
-//#define CONFIGURABLE_INT(var_name, value) int var_name = value; struct meta_int meta_int_ ## __COUNTER__(&var_name, #var_name, value); // TODO: add this var to the varLayout string
 
 
-CONFIGURABLE_INT(baseSpeed, 1500) // example
-CONFIGURABLE_INT(basePower, 1800) // example
-CONFIGURABLE_INT(lightTreshold, 67) // example
-
-
-int num_of_configurable_vars = __COUNTER__;
 
 void setup() {
 
-  Serial.begin(9600);
-//  CONFIGURABLE_INT(baseSpeed, 1500) // example
-  Serial.println(baseSpeed);
-  Serial.println(basePower);
-  Serial.println(num_of_configurable_vars);
-  Serial.println(meta_int_10.description);
-  Serial.println(meta_int_11.description);
-  // btConfigPanelSetup();
-  // sendPanelLayout();
+  Serial.begin(9600); // for debug
+
+  // 
+  for(int i=0; i < MetaInt::numMints; i++) { // print all configurable variables (test)
+    Serial.print(i);
+    Serial.print(" - var_name: ");
+    Serial.println(MetaInt::mints[i]->description);
+    Serial.print("   value: ");
+    Serial.println(*MetaInt::mints[i]->ptr);
+  }
+  
+//   btConfigPanelSetup(); // WIP
+//   sendPanelLayout(); // WIP
+
+
+   
   ///////////// Build panel in app
   /*
     BT_SERIAL.println("*.kwl");
@@ -151,36 +180,6 @@ void loop() {
       if (data_in == 'l') { // Button Released
         //<--- Insert button released code here
       }
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Requires a start character for auto code to be generated
-
-      // Receive Data from Terminal Send Box
-      // Unable to create auto code for start text longer than one character
     }*/
 
   /////////////  Send Data to Android device
