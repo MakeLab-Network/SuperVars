@@ -14,15 +14,33 @@
 
    in the future, maybe add an option to save and load config to EEPROM.
 */
+#define CONCAT_(x,y) x##y
+#define CONCAT(x,y) CONCAT_(x,y)
+#define CONFIGURABLE_INT(var_name, value) int var_name = value; struct meta_int CONCAT(meta_int_,__COUNTER__)(&var_name, #var_name); // TODO: add this var to the varLayout string
 
-#define CONFIGURABLE_INT(var_name, value) int var_name = value; // TODO: add this var to the varLayout string
-CONFIGURABLE_INT(baseSpeed, 1500) // example
+struct meta_int {
+  int* ptr;
+  char* description;
+  meta_int(int* my_ptr, char* my_description) {
+    ptr = my_ptr;
+    description = my_description;
+  }
+};
+
+void configPanelAddIntVar(int* varP, char* varName, int value) {
+  Serial.println(varName);
+  Serial.println(value);
+  *varP = 100;
+}
+
 
 #define BT_SERIAL Serial // TODO: probably use software serial later
 char* mainTitle = "add_text(8,0,xlarge,C,BT Config Example - Configuration Page,190,147,245,)"; // TODO: change the "BT Config Example" with configurable program name.
 char* navigationButtons = "add_button(2,1,5,R,r)\nadd_button(1,1,4,L,l)"; // TODO: change output
 char* pageIndexText = "add_text(7,1,xlarge,L,1/5,245,240,150,)"; // TODO: change the numbers (1/5) according to the actual page index.
 char varLayout[200]; // this is the automatic part
+
+
 
 void btConfigPanelSetup() { // TODO: get baud rate and grid size in params
   BT_SERIAL.begin(9600); //Change baud rate as required!
@@ -55,99 +73,115 @@ void sendPanelLayout() {
 int update_interval = 100; // time interval in ms for updating panel indicators
 unsigned long last_time = 0; // time of last update
 char data_in; // data received from BT_SERIAL link
+//#define CONFIGURABLE_INT(var_name, value) int var_name = value; configPanelAddIntVar(&var_name, #var_name, value); // TODO: add this var to the varLayout string
+//#define CONFIGURABLE_INT(var_name, value) int var_name = value; struct meta_int meta_int_ ## __COUNTER__(&var_name, #var_name, value); // TODO: add this var to the varLayout string
+
+
+CONFIGURABLE_INT(baseSpeed, 1500) // example
+CONFIGURABLE_INT(basePower, 1800) // example
+CONFIGURABLE_INT(lightTreshold, 67) // example
+
+
+int num_of_configurable_vars = __COUNTER__;
 
 void setup() {
-  btConfigPanelSetup();
-  
 
+  Serial.begin(9600);
+//  CONFIGURABLE_INT(baseSpeed, 1500) // example
+  Serial.println(baseSpeed);
+  Serial.println(basePower);
+  Serial.println(num_of_configurable_vars);
+  Serial.println(meta_int_10.description);
+  Serial.println(meta_int_11.description);
+  // btConfigPanelSetup();
+  // sendPanelLayout();
   ///////////// Build panel in app
+  /*
+    BT_SERIAL.println("*.kwl");
+    BT_SERIAL.println("clear_panel()");
+    BT_SERIAL.println("set_grid_size(16,8)");
 
-  BT_SERIAL.println("*.kwl");
-  BT_SERIAL.println("clear_panel()");
-  BT_SERIAL.println("set_grid_size(16,8)");
-  
-  BT_SERIAL.println("add_text(3,1,xlarge,L,My Robot - Configuration Page,190,147,245,)");
-  BT_SERIAL.println("add_text(12,1,xlarge,L,1/5,245,240,150,)");
-  BT_SERIAL.println("add_text(0,3,large,L,right motor  base speed,245,240,245,)");
-  BT_SERIAL.println("add_text(8,3,large,L,blink interval,245,240,245,)");
-  BT_SERIAL.println("add_text(0,4,large,L,Var2,245,240,245,)");
-  BT_SERIAL.println("add_text(0,5,large,L,Var3,245,240,245,)");
-  BT_SERIAL.println("add_text(0,6,large,L,Var4,245,240,245,)");
-  BT_SERIAL.println("add_text(0,7,large,L,Var5,245,240,245,)");
-  BT_SERIAL.println("add_text(8,4,large,L,Var7,245,240,245,)");
-  BT_SERIAL.println("add_text(8,5,large,L,Var8,245,240,245,)");
-  BT_SERIAL.println("add_text(8,6,large,L,Var9,245,240,245,)");
-  BT_SERIAL.println("add_text(8,7,large,L,Var10,245,240,245,)");
-  BT_SERIAL.println("add_button(2,1,5,R,r)");
-  BT_SERIAL.println("add_button(1,1,4,L,l)");
-  BT_SERIAL.println("add_send_box(13,4,3,,,)");
-  BT_SERIAL.println("add_send_box(13,3,3,,,)");
-  BT_SERIAL.println("add_send_box(5,4,3,,,)");
-  BT_SERIAL.println("add_send_box(5,5,3,,,)");
-  BT_SERIAL.println("add_send_box(5,6,3,,,)");
-  BT_SERIAL.println("add_send_box(5,7,3,,,)");
-  BT_SERIAL.println("add_send_box(13,5,3,,,)");
-  BT_SERIAL.println("add_send_box(13,6,3,,,)");
-  BT_SERIAL.println("add_send_box(13,7,3,,,)");
-  BT_SERIAL.println("add_send_box(5,3,3,1500,@1:,$)");
-  BT_SERIAL.println("set_panel_notes(-,,,)");
-  BT_SERIAL.println("run()");
-  BT_SERIAL.println("*");
-
+    BT_SERIAL.println("add_text(3,1,xlarge,L,My Robot - Configuration Page,190,147,245,)");
+    BT_SERIAL.println("add_text(12,1,xlarge,L,1/5,245,240,150,)");
+    BT_SERIAL.println("add_text(0,3,large,L,right motor  base speed,245,240,245,)");
+    BT_SERIAL.println("add_text(8,3,large,L,blink interval,245,240,245,)");
+    BT_SERIAL.println("add_text(0,4,large,L,Var2,245,240,245,)");
+    BT_SERIAL.println("add_text(0,5,large,L,Var3,245,240,245,)");
+    BT_SERIAL.println("add_text(0,6,large,L,Var4,245,240,245,)");
+    BT_SERIAL.println("add_text(0,7,large,L,Var5,245,240,245,)");
+    BT_SERIAL.println("add_text(8,4,large,L,Var7,245,240,245,)");
+    BT_SERIAL.println("add_text(8,5,large,L,Var8,245,240,245,)");
+    BT_SERIAL.println("add_text(8,6,large,L,Var9,245,240,245,)");
+    BT_SERIAL.println("add_text(8,7,large,L,Var10,245,240,245,)");
+    BT_SERIAL.println("add_button(2,1,5,R,r)");
+    BT_SERIAL.println("add_button(1,1,4,L,l)");
+    BT_SERIAL.println("add_send_box(13,4,3,,,)");
+    BT_SERIAL.println("add_send_box(13,3,3,,,)");
+    BT_SERIAL.println("add_send_box(5,4,3,,,)");
+    BT_SERIAL.println("add_send_box(5,5,3,,,)");
+    BT_SERIAL.println("add_send_box(5,6,3,,,)");
+    BT_SERIAL.println("add_send_box(5,7,3,,,)");
+    BT_SERIAL.println("add_send_box(13,5,3,,,)");
+    BT_SERIAL.println("add_send_box(13,6,3,,,)");
+    BT_SERIAL.println("add_send_box(13,7,3,,,)");
+    BT_SERIAL.println("add_send_box(5,3,3,1500,@1:,$)");
+    BT_SERIAL.println("set_panel_notes(-,,,)");
+    BT_SERIAL.println("run()");
+    BT_SERIAL.println("*");
+  */
 }
 
 void loop() {
 
   /////////////   Receive and Process Data
+  /*
+    if (BT_SERIAL.available()) {
+      data_in = BT_SERIAL.read(); //Get next character
 
-  if (BT_SERIAL.available()) {
-    data_in = BT_SERIAL.read(); //Get next character
+      if (data_in == 'R') { //Button Pressed
+        //<--- Insert button pressed code here
+      }
+      if (data_in == 'r') { // Button Released
+        //<--- Insert button released code here
+      }
 
-    if (data_in == 'R') { //Button Pressed
-      //<--- Insert button pressed code here
-    }
-    if (data_in == 'r') { // Button Released
-      //<--- Insert button released code here
-    }
+      if (data_in == 'L') { //Button Pressed
+        //<--- Insert button pressed code here
+      }
+      if (data_in == 'l') { // Button Released
+        //<--- Insert button released code here
+      }
 
-    if (data_in == 'L') { //Button Pressed
-      //<--- Insert button pressed code here
-    }
-    if (data_in == 'l') { // Button Released
-      //<--- Insert button released code here
-    }
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
+      // Receive Data from Terminal Send Box
+      // Requires a start character for auto code to be generated
 
-    // Receive Data from Terminal Send Box
-    // Requires a start character for auto code to be generated
-
-    // Receive Data from Terminal Send Box
-    // Unable to create auto code for start text longer than one character
-
-  }
+      // Receive Data from Terminal Send Box
+      // Unable to create auto code for start text longer than one character
+    }*/
 
   /////////////  Send Data to Android device
 
