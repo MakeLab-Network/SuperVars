@@ -17,7 +17,7 @@
 
 // ---------------------------------------------------------------------------------------------------
 // The real magic section... using the macro CONFIGURABLE_INT to declare a variable (instead of int x), the macro first declares the int as the user intended and also
-// creates an instance of the class MetaInt that saves a pointer to the variable and it's "description" which defaults to it's name. 
+// creates an instance of the class MetaInt that saves a pointer to the variable and it's "description" which defaults to it's name.
 // also store this MetaInt in a global static array MetaInt::mints for future use
 
 #define CONCAT_(x,y) x##y // these two macros are needed to ensure transpilation, used later for creating unique names for instances of the class.
@@ -28,7 +28,7 @@
 
 class MetaInt {
   public:
-    static MetaInt* mints[200]; // save all MetaInts created, use this later in the config panel.
+    static MetaInt* mints[1000]; // save all MetaInts created, use this later in the config panel.
     static int numMints;
     int* ptr;
     char* description;
@@ -45,17 +45,19 @@ class MetaInt {
 
 // still needs to initialize static variables
 int MetaInt::numMints = 0;
-MetaInt* MetaInt::mints[200];
+MetaInt* MetaInt::mints[1000];
 
 // ---------------------------------------------------------------------------------------------------
 
 // --- Configurable variables area - save here all the variables in the code that you wish to be able to config
 // currently supports only int type
 
-CONFIGURABLE_INT(baseSpeed, 1500) // this equals to [ int baseSpeed = 1500; ] but will also allow for remote config via bt 
+CONFIGURABLE_INT(baseSpeed, 1500) // this equals to [ int baseSpeed = 1500; ] but will also allow for remote config via bt
 CONFIGURABLE_INT(basePower, 2000)
 
 // -----------------------------------------------------
+
+
 void configPanelAddIntVar(int* varP, char* varName, int value) {
   Serial.println(varName);
   Serial.println(value);
@@ -66,7 +68,7 @@ void configPanelAddIntVar(int* varP, char* varName, int value) {
 char* mainTitle = "add_text(8,0,xlarge,C,BT Config Example - Configuration Page,190,147,245,)"; // TODO: change the "BT Config Example" with configurable program name.
 char* navigationButtons = "add_button(2,1,5,R,r)\nadd_button(1,1,4,L,l)"; // TODO: change output
 char* pageIndexText = "add_text(7,1,xlarge,L,1/5,245,240,150,)"; // TODO: change the numbers (1/5) according to the actual page index.
-char varLayout[200]; // this is the automatic part
+char varLayout[2000]; // this is the automatic part
 
 
 
@@ -82,6 +84,18 @@ void sendPanelLayout() {
   char finalPanel[1000];
   sprintf(finalPanel, "%s\n%s\n%s\n%s\n", mainTitle, navigationButtons, pageIndexText, varLayout);
   BT_SERIAL.print(finalPanel);
+}
+
+void prepareVariableLayout() {
+  int varLayoutIndex = 0;
+  for (int i = 0; i < MetaInt::numMints; i++) { // iterate over all configurable variables
+    // for the first 5 vars, put the text in column 0 and rows 3,4,5,6,7, for the next 5 vars, column 8 and rows 3,4,5,6,7
+    int textLen = sprintf(varLayout + varLayoutIndex, "add_text(%d,%d,large,L,%s,245,240,245,)\nadd_send_box(%d,%d,3,%d,@%d:,$)\n",
+    i < 5 ? 0 : 8, 3 + (i % 5), MetaInt::mints[i]->description,
+    i < 5 ? 5 : 13, 3 + (i % 5), *MetaInt::mints[i]->ptr, i);
+    varLayoutIndex += textLen;
+    }
+    varLayout[varLayoutIndex] = '\0'; // EOF
 }
 
 
@@ -108,22 +122,22 @@ char data_in; // data received from BT_SERIAL link
 
 void setup() {
 
-  Serial.begin(9600); // for debug
-
-  // 
-  for(int i=0; i < MetaInt::numMints; i++) { // print all configurable variables (test)
-    Serial.print(i);
-    Serial.print(" - var_name: ");
-    Serial.println(MetaInt::mints[i]->description);
-    Serial.print("   value: ");
-    Serial.println(*MetaInt::mints[i]->ptr);
-  }
-  
-//   btConfigPanelSetup(); // WIP
-//   sendPanelLayout(); // WIP
+  btConfigPanelSetup(); // WIP
+  prepareVariableLayout();
+  sendPanelLayout(); // WIP
+  //  for (int i = 0; i < MetaInt::numMints; i++) { // print all configurable variables (test)
+  //    Serial.print(i);
+  //    Serial.print(" - var_name: ");
+  //    Serial.println(MetaInt::mints[i]->description);
+  //    Serial.print("   value: ");
+  //    Serial.println(*MetaInt::mints[i]->ptr);
+  //  }
 
 
-   
+
+
+
+
   ///////////// Build panel in app
   /*
     BT_SERIAL.println("*.kwl");
