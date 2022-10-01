@@ -24,7 +24,7 @@
 #define CONCAT(x,y) CONCAT_(x,y)
 // use this to declare every variable that you want to be able to configure (e.g do "CONFIGURABLE_INT(baseSpeed, 1200)" instead of "int baseSpeed = 1200;")
 // 2 steps to this macro, first declare and initialize the variable for the user, then create a class that saves the name and a pointer to that variable.
-#define CONFIGURABLE_INT(var_name, value) int var_name = value; MetaInt CONCAT(MINT_, var_name) = MetaInt(&var_name, #var_name);
+#define CONFIGURABLE_INT(var_name, value) int var_name = value; MetaInt CONCAT(MINT_, var_name) = MetaInt(&var_name, #var_name)
 
 class MetaInt {
   public:
@@ -51,9 +51,18 @@ MetaInt* MetaInt::mints[1000];
 
 // --- Configurable variables area - save here all the variables in the code that you wish to be able to config
 // currently supports only int type
-
-CONFIGURABLE_INT(baseSpeed, 1500) // this equals to [ int baseSpeed = 1500; ] but will also allow for remote config via bt
-CONFIGURABLE_INT(basePower, 2000)
+// TODO: move this to another tab
+CONFIGURABLE_INT(gridSizeX, 16);
+CONFIGURABLE_INT(gridSizeY, 8);
+CONFIGURABLE_INT(numOfVarsInEachColumn, 5);
+CONFIGURABLE_INT(varTextBoxBasePosX, 0);
+CONFIGURABLE_INT(varTextBoxBasePosY, 3);
+CONFIGURABLE_INT(varSendBoxBasePosX, 5);
+CONFIGURABLE_INT(varSendBoxBasePosY, 3);
+CONFIGURABLE_INT(distanceBetweenVarTextBoxX, 8);
+CONFIGURABLE_INT(distanceBetweenVarTextBoxY, 1);
+CONFIGURABLE_INT(distanceBetweenVarSendBoxX, 8);
+CONFIGURABLE_INT(distanceBetweenVarSendBoxY, 1);
 
 // -----------------------------------------------------
 
@@ -65,37 +74,47 @@ void configPanelAddIntVar(int* varP, char* varName, int value) {
 
 
 #define BT_SERIAL Serial // TODO: probably use software serial later
+
 char* mainTitle = "add_text(8,0,xlarge,C,BT Config Example - Configuration Page,190,147,245,)"; // TODO: change the "BT Config Example" with configurable program name.
 char* navigationButtons = "add_button(2,1,5,R,r)\nadd_button(1,1,4,L,l)"; // TODO: change output
 char* pageIndexText = "add_text(7,1,xlarge,L,1/5,245,240,150,)"; // TODO: change the numbers (1/5) according to the actual page index.
 char varLayout[2000]; // this is the automatic part
+char* panelNotes = "set_panel_notes(-,,,)";
+char* runCommand = "run()";
+char* clearPanelCmd = "clear_panel()";
 
 
 
 void btConfigPanelSetup() { // TODO: get baud rate and grid size in params
   BT_SERIAL.begin(9600); //Change baud rate as required!
-  BT_SERIAL.println("*.kwl");
-  BT_SERIAL.println("clear_panel()");
-  BT_SERIAL.println("set_grid_size(16,8)");
+  BT_SERIAL.println("*.kwl"); // what is this??? do we need this in loop?
+  BT_SERIAL.println(clearPanelCmd);
+  char out[100];
+  sprintf(out, "set_grid_size(%d,%d)", gridSizeX, gridSizeY);
+  BT_SERIAL.println(out);
 }
 
 void sendPanelLayout() {
-  BT_SERIAL.println("clear_panel()");
   char finalPanel[1000];
-  sprintf(finalPanel, "%s\n%s\n%s\n%s\n", mainTitle, navigationButtons, pageIndexText, varLayout);
+  sprintf(finalPanel, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n*\n", clearPanelCmd, mainTitle, navigationButtons, pageIndexText, varLayout, panelNotes, runCommand);
   BT_SERIAL.print(finalPanel);
 }
 
 void prepareVariableLayout() {
-  int varLayoutIndex = 0;
-  for (int i = 0; i < MetaInt::numMints; i++) { // iterate over all configurable variables
+  int varLayoutStringIndex = 0;
+  // TODO: start index and end index according to page index
+  for (int i = 0; i < MetaInt::numMints && i < numOfVarsInEachColumn * 2; i++) { // iterate over all configurable variables
     // for the first 5 vars, put the text in column 0 and rows 3,4,5,6,7, for the next 5 vars, column 8 and rows 3,4,5,6,7
-    int textLen = sprintf(varLayout + varLayoutIndex, "add_text(%d,%d,large,L,%s,245,240,245,)\nadd_send_box(%d,%d,3,%d,@%d:,$)\n",
-    i < 5 ? 0 : 8, 3 + (i % 5), MetaInt::mints[i]->description,
-    i < 5 ? 5 : 13, 3 + (i % 5), *MetaInt::mints[i]->ptr, i);
-    varLayoutIndex += textLen;
-    }
-    varLayout[varLayoutIndex] = '\0'; // EOF
+    int textPosX = i < numOfVarsInEachColumn ? varTextBoxBasePosX : varTextBoxBasePosX + distanceBetweenVarTextBoxX;
+    int textPosY = varTextBoxBasePosY + ((i % numOfVarsInEachColumn) * distanceBetweenVarTextBoxY);
+    int sendBoxPosX = i < numOfVarsInEachColumn ? varSendBoxBasePosX : varSendBoxBasePosX + distanceBetweenVarSendBoxX;
+    int sendBoxPosY = varSendBoxBasePosY + ((i % numOfVarsInEachColumn) * distanceBetweenVarSendBoxY);
+    int textLen = sprintf(varLayout + varLayoutStringIndex, "add_text(%d,%d,large,L,%s,245,240,245,)\nadd_send_box(%d,%d,3,%d,@%d:,$)\n",
+                          textPosX, textPosY, MetaInt::mints[i]->description,
+                          sendBoxPosX, sendBoxPosY, *MetaInt::mints[i]->ptr, i);
+    varLayoutStringIndex += textLen;
+  }
+  varLayout[varLayoutStringIndex] = '\0'; // EOF
 }
 
 
@@ -203,5 +222,5 @@ void loop() {
     last_time = t;
 
   }
-
+  delay(1);
 }
