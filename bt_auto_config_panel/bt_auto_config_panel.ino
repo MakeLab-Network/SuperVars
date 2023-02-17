@@ -1,10 +1,11 @@
 /*
-    ------ ConfigBee (config (with) bluetooth electronics easily) - by Guy Ostfeld
-   The motivation in this project is to create a library (or a snippet of simple to use code) that will make an arduino project easy to configure using
-   the "bluetooth electronics" android app
+    ------ SuperVars - by Guy Ostfeld
+   The motivation in this project is to create a library (or a snippet of simple to use code),
+   that will make an arduino project easy to configure and monitor,
+   using the "bluetooth electronics" android app.
    using the feature of remote code (in the app), I wish for the arduino to create automatically a configuration dashboard,
    with the desired variables and send it to the phone via bt.
-   note that this might be memory heavy since we are using a large amount of strings, preferably use arduino mega/esp8266/esp32.
+   note that this might be memory heavy since we are using a large amount of strings, preferably use arduino mega or esp8266/esp32.
 
    e.g of usage:
    CONFIGURABLE_INT(speed, 1500) // this macro should declare a var named speed, init it to 1500, and add it to the remote panel
@@ -76,8 +77,8 @@ CONFIGURABLE_INT(distanceBetweenVarSendBoxY, 1);
 CONFIGURABLE_INT(sendBtPanelIntervalMS, 10000);
 CONFIGURABLE_INT(numOfColoumnsInVarLayout, 2);
 
-#define CONFIG_BEE_VAR_INPUT_MAGIC_CHAR '@'
-#define CONFIG_BEE_BUTTONS_MAGIC_CHAR '!'
+#define SUPER_VARS_VAR_INPUT_MAGIC_CHAR '@'
+#define SUPER_VARS_BUTTONS_MAGIC_CHAR '!'
 #define PAGE_INDEX_RIGHT_BUTTON_MAGIC 'R'
 #define PAGE_INDEX_LEFT_BUTTON_MAGIC 'L'
 int varPageIndex = 0;
@@ -86,12 +87,14 @@ int totalVarPagesNum = 1;
 
 unsigned long sendBtPanelTime = 0;
 char data_in; // data received from BT_SERIAL link
-#define BT_SERIAL Serial // TODO: probably use software serial later
+#include <SoftwareSerial.h>
+SoftwareSerial BT_SERIAL(D2, D3); // rx tx
+//#define BT_SERIAL Serial // TODO: probably use software serial later
 
 
 // ----------------------------------------------------- commands
-char* mainTitle = "add_text(8,0,xlarge,C,ConfigBee - Configuration Page,190,147,245,)"; // TODO: change the "BT Config Example" with configurable program name.
-char* navigationButtons = "add_button(2,1,5,,CONCAT(CONFIG_BEE_BUTTONS_MAGIC_CHARR,PAGE_INDEX_RIGHT_BUTTON_MAGIC))\nadd_button(1,1,4,,CONCAT(CONFIG_BEE_BUTTONS_MAGIC_CHAR,PAGE_INDEX_LEFT_BUTTON_MAGIC))";
+char* mainTitle = "add_text(8,0,xlarge,C,SuperVars - Configuration Page,190,147,245,)"; // TODO: change the "BT Config Example" with configurable program name.
+char* navigationButtons = "add_button(2,1,5,,CONCAT(SUPER_VARS_BUTTONS_MAGIC_CHARR,PAGE_INDEX_RIGHT_BUTTON_MAGIC))\nadd_button(1,1,4,,CONCAT(SUPER_VARS_BUTTONS_MAGIC_CHAR,PAGE_INDEX_LEFT_BUTTON_MAGIC))";
 char* pageIndexText = "add_text(7,1,xlarge,L,%d/%d,245,240,150,)"; // TODO: change the numbers (1/5) according to the actual page index.
 char varLayout[2000]; // this is the automatic part
 char* panelNotes = "set_panel_notes(-,,,)";
@@ -102,22 +105,13 @@ char* clearPanelCmd = "clear_panel()";
 
 
 
-
-
-// -----------------------------------------------------
-
-
-
-
-
-
 void setup() {
-  configBeeSetup();
+  superVarsSetup();
   //  printMints(); // for test
 }
 
 void loop() {
-  configBeeLoop();
+  superVarsLoop();
 
   delay(1);
 }
